@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(compiler_cpp src/main.cpp
+    src/Parser.h
+    src/Parser.cpp
     src/Scaner.h
     src/Scaner.cpp
     src/Types.h)
