@@ -1,8 +1,15 @@
+#include <format>
+
+
 #include "Parser.h"
 
+
+
 TParser::TParser(TScaner* scaner) : 
-	m_Scaner(scaner) 
-{}
+    m_Scaner(scaner), m_SemTree(m_Scaner)
+{
+    m_SemTree.MakeCurrent();
+}
 
 
 void TParser::Parse()
@@ -10,128 +17,161 @@ void TParser::Parse()
 	DescriptionDiagram();
 }
 
-void TParser::AndExprDiagram()
+
+DataType TParser::AndExprDiagram()
 {
-	EqualExprDiagram();
+    DataType dataType = EqualExprDiagram();
 
 	LexType type = m_Scaner->PeekNext(nullptr);
 
 	while (type == TypeAnd) {
 
-		type = m_Scaner->Scan(nullptr);
+        (void)m_Scaner->Scan(nullptr);
 
-		EqualExprDiagram();
+        dataType = m_SemTree.ExpressionResultType(dataType, EqualExprDiagram(), type);
 
 		type = m_Scaner->PeekNext(nullptr);
 	}
+
+    return dataType;
 }
 
-void TParser::ExprDiagram()
+
+
+DataType TParser::ExprDiagram()
 {
-	AndExprDiagram();
+    DataType dataType = AndExprDiagram();
 
 	LexType type = m_Scaner->PeekNext(nullptr);
 
 	while (type == TypeOr) {
 
-		type = m_Scaner->Scan(nullptr);
-		AndExprDiagram();
-		type = m_Scaner->PeekNext(nullptr);
-	}
+        m_Scaner->Scan(nullptr);
+        dataType = m_SemTree.ExpressionResultType(dataType, AndExprDiagram(), type);
+        type = m_Scaner->PeekNext(nullptr);
+    }
+
+    return dataType;
 }
 
-void TParser::EqualExprDiagram()
+
+
+DataType TParser::EqualExprDiagram()
 {
-	CmpExprDiagram();
+    DataType dataType = CmpExprDiagram();
 
 	LexType type = m_Scaner->PeekNext(nullptr);
 
 	while (type == TypeEQ || type == TypeNE) {
 
-		type = m_Scaner->Scan(nullptr);
-		CmpExprDiagram();
+        m_Scaner->Scan(nullptr);
+        dataType = m_SemTree.ExpressionResultType(dataType, CmpExprDiagram(), type);
 		type = m_Scaner->PeekNext(nullptr);
 	}
+
+    return dataType;
 }
 
-void TParser::CmpExprDiagram()
+
+DataType TParser::CmpExprDiagram()
 {
-	AddExprDiagram();
+    DataType dataType = AddExprDiagram();
 
 	LexType type = m_Scaner->PeekNext(nullptr);
 
 	while (	type == TypeGT || type == TypeLT || 
 			type == TypeGE || type == TypeLE) {
 
-		type = m_Scaner->Scan(nullptr);
-		AddExprDiagram();
-
+        m_Scaner->Scan(nullptr);
+        dataType = m_SemTree.ExpressionResultType(dataType, AddExprDiagram(), type);
 		type = m_Scaner->PeekNext(nullptr);
 	}
+
+    return dataType;
 }
 
-void TParser::AddExprDiagram()
+
+
+DataType TParser::AddExprDiagram()
 {
-	MulExprDiagram();
+    DataType dataType = MulExprDiagram();
 
 	LexType type = m_Scaner->PeekNext(nullptr);
 
 	while (type == TypePlus || type == TypeMinus) {
 
-		type = m_Scaner->Scan(nullptr);
-		MulExprDiagram();
+        m_Scaner->Scan(nullptr);
+        dataType = m_SemTree.ExpressionResultType(dataType, MulExprDiagram(), type);
 		type = m_Scaner->PeekNext(nullptr);
 	}
+
+    return dataType;
 }
 
-void TParser::MulExprDiagram()
+
+
+DataType TParser::MulExprDiagram()
 {
-	UnaryExpDiagram();
+    DataType dataType = UnaryExpDiagram();
 
 	LexType type = m_Scaner->PeekNext(nullptr);
 
 	while (type == TypeMul || type == TypeDiv || type == TypeMod) {
 
-		type = m_Scaner->Scan(nullptr);
-		UnaryExpDiagram();
-
+        m_Scaner->Scan(nullptr);
+        dataType = m_SemTree.ExpressionResultType(dataType, UnaryExpDiagram(), type);
 		type = m_Scaner->PeekNext(nullptr);
 	}
+
+    return dataType;
 }
 
-
-
-void TParser::UnaryExpDiagram()
+DataType TParser::UnaryExpDiagram()
 {
 	LexType type = m_Scaner->PeekNext(nullptr);
 	if (type == TypePlus || type == TypeMinus)
-		type = m_Scaner->Scan(nullptr);
+        m_Scaner->Scan(nullptr);
 
-	ElementoryExprDiagram();
+    return ElementoryExprDiagram();
 }
 
-void TParser::ElementoryExprDiagram()
+
+DataType TParser::ElementoryExprDiagram()
 {
+    DataType dataType = Undefined;
 	LexType type = m_Scaner->PeekNext(nullptr);
+
+    Tree* element = nullptr;
 
 	switch (type)
 	{
 	case TypeConst:
-		type = m_Scaner->Scan(nullptr);
+        m_Scaner->Scan(nullptr);
+        dataType = DataTypeLong;
 		break;
 
-	case TypeIdent:
-		NameDiagram();
-		break;
+    case TypeIdent:
+        element = NameDiagram();
+
+        if (element && element->Get()->objType != ObjectVar &&
+                       element->Get()->objType != ObjectTypeClass)
+                 m_Scaner->PrintError("illegal operand");
+
+        else if (element)
+            dataType = element->Get()->dataType;
+
+        break;
 
 	case TypeExp:
-		type = m_Scaner->Scan(nullptr);
+        m_Scaner->Scan(nullptr);
+        dataType = DataTypeDouble;
 		break;
 
+
 	case TypeLBracket:
-		type = m_Scaner->Scan(nullptr);
-		ExprDiagram();
-		type = m_Scaner->Scan(nullptr);
+        m_Scaner->Scan(nullptr);
+        dataType = ExprDiagram();
+        type = m_Scaner->Scan(nullptr);
 		if (type != TypeRBracket) {
 			m_Scaner->PrintError("Expected a ')'");
 			exit(0);
@@ -142,66 +182,107 @@ void TParser::ElementoryExprDiagram()
 		m_Scaner->PrintError("Expected an expression");
 		exit(0);
 		break;
-	}
+    }
+
+    m_SemTree.setMutableElement(element);
+
+    return dataType;
 }
 
 
-void TParser::NameDiagram()
+
+Tree *TParser::NameDiagram()
 {
-	LexType type;
-	TScaner::State state;
+    Tree* tmp = m_SemTree.GetCurrent();
 
-	do {
+    std::string identifier;
+    LexType type = m_Scaner->Scan(&identifier);
 
-		type = m_Scaner->Scan(nullptr);
-		if (type != TypeIdent) {
-			m_Scaner->PrintError("Expected a member name");
-			exit(0);
-		}
+    if (type != TypeIdent) {
+        m_Scaner->PrintError("Expected a member name");
+        exit(0);
+    }
 
-		state = m_Scaner->SaveState();
-		type = m_Scaner->Scan(nullptr);
+    // find name root
+    Tree* member = m_SemTree.FindIdentifier(identifier);
+    bool isInvalid = member == nullptr;
+    identifier.clear();
 
-	} while (type == TypeDot);
-	m_Scaner->Restore(state);
+    // find members
+    type = m_Scaner->PeekNext(nullptr);
+    while (type == TypeDot) {
+       m_Scaner->Scan(nullptr);
+
+       type = m_Scaner->Scan(&identifier);
+       if (type != TypeIdent) {
+           m_Scaner->PrintError("Expected a member name");
+           exit(0);
+       }
+
+       if (!isInvalid) {
+           member = m_SemTree.FindMember(identifier);
+           isInvalid = (member == nullptr);
+       }
+
+       identifier.clear();
+
+       type = m_Scaner->PeekNext(nullptr);
+    }
+
+
+    tmp->MakeCurrent();
+
+    return member;
 }
+
+
 
 void TParser::DataDiagram()
 {
-	LexType type = m_Scaner->Scan(nullptr);
+    std::string identifier;
 
-	if (type != TypeInt && type != TypeShort &&
-		type != TypeLong && type != TypeDouble && type != TypeIdent) {
-		m_Scaner->PrintError("Expected a type");
-		exit(0);
-	}
+    // check data type to existence
+    std::string typeName;
+    LexType dataType = m_Scaner->Scan(&typeName);
 
+    LexType type;
 	do
 	{
-		type = m_Scaner->Scan(nullptr);
-
+        type = m_Scaner->Scan(&identifier);
 		if (type != TypeIdent) {
 			m_Scaner->PrintError("Expected an identifier");
 			exit(0);
 		}
 
-		type = m_Scaner->Scan(nullptr);
+        Tree* newElement;
+        if (dataType == TypeIdent)
+            newElement = m_SemTree.Add(identifier, ObjectTypeClass)->SetCustomDataType(typeName);
+        else
+            newElement = m_SemTree.Add(identifier, ObjectVar)->SetDataType(Tree::DataTypeFromLexem(dataType));
+
+
 
 		// parse an assignment expression
+        type = m_Scaner->Scan(nullptr);
 		if (type == TypeAssign) {
-			ExprDiagram();
+            auto result = ExprDiagram();
+            if (result == DataTypeCustom)
+                newElement->CheckAssignableFrom(m_SemTree.GetMutableElement());
+            else
+                newElement->CheckAssignableFrom(result);
+
 			type = m_Scaner->Scan(nullptr);
 		}
+
 
 	} while (type == TypeComma);
 
 	if (type != TypeSemicolon) {
-		m_Scaner->PrintError("Expected a ';'");
+        m_Scaner->PrintError("Expected a ';'");
 		exit(0);
-	}
-
-	
+	}	
 }
+
 
 void TParser::DescriptionDiagram()
 {	
@@ -210,52 +291,57 @@ void TParser::DescriptionDiagram()
 
 		type = m_Scaner->PeekNext(nullptr);
 
-		if (type == TypeInt || type == TypeShort ||
-			type == TypeLong || type == TypeDouble || type == TypeIdent) {
-
+        if (type == TypeInt    || type == TypeShort  || type == TypeLong ||
+            type == TypeDouble || type == TypeIdent) {
 			DataDiagram();
-		}
-		else if (type == TypeClass) {
+
+        } else if (type == TypeClass) {
 			ClassDiagram();
 
-		}
-		else if (type == TypeVoid) {
+        } else if (type == TypeVoid) {
 			FunctionDiagram();
-		}
-		else {
+
+        } else {
 			m_Scaner->PrintError("Expected a declaration");
 			exit(0);
 		}
 
 		type = m_Scaner->PeekNext(nullptr);
 
-	} while (type == TypeInt || type == TypeShort ||
-		type == TypeLong || type == TypeDouble ||
-		type == TypeIdent || type == TypeClass ||
-		type == TypeVoid);
+    } while (type == TypeInt   || type == TypeShort  ||
+             type == TypeLong  || type == TypeDouble ||
+             type == TypeIdent || type == TypeClass  ||
+             type == TypeVoid);
 }
 
 void TParser::ClassDiagram()
 {
-	LexType type = m_Scaner->Scan(nullptr);
-	if (type != TypeClass) {
-		m_Scaner->PrintError("Expected a 'class'");
-		exit(0);
-	}
 
-	type = m_Scaner->Scan(nullptr);
+    m_Scaner->Scan(nullptr); // skip 'class' lexem
+
+    std::string identifier;
+    LexType type = m_Scaner->Scan(&identifier);
 	if (type != TypeIdent) {
 		m_Scaner->PrintError("Expected an identifier");
 		exit(0);
-	}
+    }
+
+    m_SemTree.Add(identifier, ObjectClass);
 
 	type = m_Scaner->Scan(nullptr);
 	if (type != TypeLParenthesis) {
 		m_Scaner->PrintError("Expected a '{'");
 		exit(0);
-	}
+    }
+
+
+    Tree* tmpTree = m_SemTree.GetCurrent();
+    m_SemTree.AddBlock()->MakeCurrent();
 
 	DescriptionDiagram();
+
+    tmpTree->MakeCurrent();
+
 
 	type = m_Scaner->Scan(nullptr);
 	if (type != TypeRParenthesis) {
@@ -273,23 +359,23 @@ void TParser::ClassDiagram()
 
 void TParser::FunctionDiagram()
 {
-	LexType type = m_Scaner->Scan(nullptr);
-	if (type != TypeVoid) {
-		m_Scaner->PrintError("Expected a 'void'");
-		exit(0);
-	}
+    m_Scaner->Scan(nullptr); // skip void lexem
 
-	type = m_Scaner->Scan(nullptr);
+    std::string name;
+    LexType type = m_Scaner->Scan(&name);
 	if (type != TypeIdent && type != TypeMain) {
 		m_Scaner->PrintError("Expected an identifier");
 		exit(0);
 	}
+
+    m_SemTree.Add(name, ObjectFunc);
 
 	type = m_Scaner->Scan(nullptr);
 	if (type != TypeLBracket) {
 		m_Scaner->PrintError("Expected a '('");
 		exit(0);
 	}
+
 
 	type = m_Scaner->Scan(nullptr);
 	if (type != TypeRBracket) {
@@ -300,26 +386,33 @@ void TParser::FunctionDiagram()
 	CompoundOperatorDiagram();
 }
 
+
 void TParser::OperatorDiagram()
 {
 	LexType type = m_Scaner->PeekNext(nullptr);
-	
-	if (type == TypeSemicolon) {
-		type = m_Scaner->Scan(nullptr);
 
-	}
-	else if (type == TypeLParenthesis) {
+	if (type == TypeSemicolon) {
+        m_Scaner->Scan(nullptr);
+
+    } else if (type == TypeLParenthesis) {
 		CompoundOperatorDiagram();
 
 	} else if (type == TypeWhile) {
-		WhileOperatorDiagram();
+        WhileOperatorDiagram();
 
 	} else if (type == TypeIdent) {
-		NameDiagram();
+        Tree* member = NameDiagram();
 
 		type = m_Scaner->Scan(nullptr);
 		if (type == TypeAssign) {
-			ExprDiagram();
+            DataType dataType = ExprDiagram();
+
+            // check assignabiltity
+            if (member && dataType == DataTypeCustom)
+                member->CheckAssignableFrom(m_SemTree.GetMutableElement());
+            else if (member) {
+                member->CheckAssignableFrom(dataType);
+            }
 
 		} else if (type == TypeLBracket) {
 			
@@ -329,12 +422,15 @@ void TParser::OperatorDiagram()
 				exit(0);
 			}
 
+            if (member && member->Get()->objType != ObjectFunc) {
+                m_Scaner->PrintError("term does not evaluate to a function taking 0 arguments");
+            }
 
 		} else {
 			m_Scaner->PrintError("Expected a ';'");
 			exit(0);
-		}
-		
+        }
+
 		type = m_Scaner->Scan(nullptr);
 		if (type != TypeSemicolon) {
 			m_Scaner->PrintError("Expected a ';'");
@@ -351,7 +447,12 @@ void TParser::CompoundOperatorDiagram()
 		exit(0);
 	}
 	
-	OperatorDescriptionDiagram();
+    auto tmpTree = m_SemTree.GetCurrent();
+    m_SemTree.AddBlock()->MakeCurrent();
+
+    OperatorDescriptionDiagram();
+
+    tmpTree->MakeCurrent();
 
 	type = m_Scaner->Scan(nullptr);
 	if (type != TypeRParenthesis) {
@@ -365,11 +466,12 @@ void TParser::OperatorDescriptionDiagram()
 {
 	LexType type = m_Scaner->PeekNext(nullptr);
 	do {
-		bool isType = false;
+
+        bool isType = false;
 		if (type == TypeIdent) {
 			auto state = m_Scaner->SaveState();
-			auto next = m_Scaner->Scan(nullptr);
-			next = m_Scaner->Scan(nullptr);
+            m_Scaner->Scan(nullptr);
+            auto next = m_Scaner->Scan(nullptr);
 
 			if (next != TypeDot && next != TypeAssign && next != TypeLBracket)
 				isType = true;
@@ -379,13 +481,11 @@ void TParser::OperatorDescriptionDiagram()
 
 
 		if (isType || type == TypeInt || type == TypeLong ||
-			type == TypeShort || type == TypeDouble) {
+            type == TypeShort || type == TypeDouble)
 			DataDiagram();
 
-		} else if (type == TypeIdent || type == TypeSemicolon || type == TypeWhile) {
+        else if (type == TypeIdent || type == TypeSemicolon || type == TypeWhile)
 			OperatorDiagram();
-
-		}
 
 		type = m_Scaner->PeekNext(nullptr);
 	} while (type == TypeIdent || type == TypeInt || type == TypeLong || 
@@ -396,15 +496,15 @@ void TParser::OperatorDescriptionDiagram()
 
 void TParser::WhileOperatorDiagram()
 {
-	LexType type = m_Scaner->Scan(nullptr);
+    m_Scaner->Scan(nullptr); // skip 'while' lexem
 
-	type = m_Scaner->Scan(nullptr);
+    LexType type = m_Scaner->Scan(nullptr);
 	if (type != TypeLBracket) {
 		m_Scaner->PrintError("Expected a '('");
 		exit(0);
 	}
 
-	ExprDiagram();
+    m_SemTree.CheckForIntegralType(ExprDiagram());
 
 	type = m_Scaner->Scan(nullptr);
 	if (type != TypeRBracket) {

@@ -11,7 +11,7 @@ class TScaner
     static std::map<std::string, LexType> m_Table;
 
 public:
-    TScaner(const char* text);
+    TScaner(const std::string& name);
     ~TScaner();
 
     TScaner(const TScaner&) = delete;
@@ -43,6 +43,8 @@ private:
     size_t m_Pos;
     size_t m_Column;
     size_t m_Line;
+
+    std::string m_FileName;
 };
 
 #endif // SCANER_H

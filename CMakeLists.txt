@@ -5,12 +5,15 @@ project(compiler_cpp LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(compiler_cpp src/main.cpp
-    src/Parser.h
-    src/Parser.cpp
-    src/Scaner.h
-    src/Scaner.cpp
-    src/Types.h)
+
+file(GLOB ROOT_SRC src/*.cpp)
+file(GLOB ROOT_HEADER src/*.h)
+file(GLOB ROOT_INLINE src/*.inl)
+
+add_executable(compiler_cpp
+    ${ROOT_SRC}
+    ${ROOT_HEADER}
+    ${ROOT_INLINE})
 
 
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/)

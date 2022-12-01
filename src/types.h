@@ -3,9 +3,6 @@
 
 #include <stdint.h>
 
-
-using Symbol = char;
-
 enum LexType {
     TypeConst = 1,
     TypeIdent,
@@ -52,6 +49,25 @@ enum LexType {
 
 };
 
+
+
+enum ObjectType {
+    ObjectEmpty,
+    ObjectVar,
+    ObjectTypeVar,
+    ObjectFunc,
+    ObjectClass,
+    ObjectTypeClass,
+};
+
+enum DataType {
+    Undefined,
+    DataTypeShort,
+    DataTypeInt,
+    DataTypeLong,
+    DataTypeDouble,
+    DataTypeCustom,
+};
 
 
 

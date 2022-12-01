@@ -1,8 +1,10 @@
 #include "Scaner.h"
+
 #include <string.h>
 #include <iostream>
 #include <format>
-
+#include <fstream>
+#include <sstream>
 
 inline bool IsDigit(char symbol)
 {
@@ -26,12 +28,21 @@ std::map<std::string, LexType> TScaner::m_Table = {
     {"class", TypeClass},
 };
 
-TScaner::TScaner(const char *text) :
-    m_Pos(0), m_Column(0), m_Line(1)
+TScaner::TScaner(const std::string& name) :
+    m_Pos(0), m_Column(0), m_Line(1), m_FileName(name)
 {
-    size_t bytes = strlen(text) + 1;
+    std::ifstream in(m_FileName);
+    if (in.is_open() == false)
+        std::exit(1);
+    std::stringstream ss;
+    ss << in.rdbuf();
+    in.close();
+
+    auto text = ss.str();
+
+    size_t bytes = text.size() + 1;
     m_Text = new char [bytes];
-    memcpy(m_Text, text, bytes);
+    memcpy(m_Text, text.c_str(), bytes);
 }
 
 
@@ -111,8 +122,7 @@ LexType TScaner::Scan(std::string *lexem)
             std::string buffer;
 
             if (m_Text[m_Pos] == '0' && IsDigit(m_Text[m_Pos + 1])) {
-                PrintError(std::format("{}: number can't start from {}",
-                                       m_Column, m_Text[m_Pos]));
+                PrintError(std::format("number can't start from {}", m_Text[m_Pos]));
                 ++m_Pos; ++m_Column;
                 return TypeError;
             }
@@ -153,7 +163,7 @@ LexType TScaner::Scan(std::string *lexem)
             }
 
             if (m_Text[m_Pos] != 'e') {
-                PrintError(std::format("{}: the real number should have 'e'", m_Column));
+                PrintError("the real number should have 'e'");
                 return TypeError;
             }
 
@@ -177,7 +187,7 @@ LexType TScaner::Scan(std::string *lexem)
 
                 } while (IsDigit(m_Text[m_Pos]));
             } else {
-                PrintError(std::format("{}: exponent has no digits", m_Column));
+                PrintError("exponent has no digits");
                 return TypeError;
             }
 
@@ -195,8 +205,7 @@ LexType TScaner::Scan(std::string *lexem)
             return TypeOr;
 
         } else if (m_Text[m_Pos] == '|') {
-            PrintError(std::format("{}: syntax error '{}'",
-                                   m_Column, m_Text[m_Pos]));
+            PrintError(std::format("syntax error '{}'", m_Text[m_Pos]));
             m_Pos += 1;
             m_Column += 1;
             return TypeError;
@@ -209,8 +218,7 @@ LexType TScaner::Scan(std::string *lexem)
             return TypeAnd;
 
         } else if (m_Text[m_Pos] == '&') {
-            PrintError(std::format("{}: syntax error '{}'",
-                                   m_Column, m_Text[m_Pos]));
+            PrintError(std::format("syntax error '{}'", m_Text[m_Pos]));
             m_Pos += 1;
             m_Column += 1;
             return TypeError;
@@ -222,8 +230,7 @@ LexType TScaner::Scan(std::string *lexem)
             m_Column += 2;
             return TypeNE;
         } else if (m_Text[m_Pos] == '!') {
-            PrintError(std::format("{}: syntax error '{}'",
-                                   m_Column, m_Text[m_Pos]));
+            PrintError(std::format("syntax error '{}'", m_Text[m_Pos]));
             m_Pos += 1;
             m_Column += 1;
             return TypeError;
@@ -286,8 +293,7 @@ LexType TScaner::Scan(std::string *lexem)
             return TypeAssign;
 
         default:
-            PrintError(std::format("{}: Unknown character '0x{:x}'",
-                                   m_Column, m_Text[m_Pos - 1]));
+            PrintError(std::format("Unknown character '0x{:x}'", m_Text[m_Pos - 1]));
             return TypeError;
             break;
         }
@@ -296,7 +302,7 @@ LexType TScaner::Scan(std::string *lexem)
 
 void TScaner::PrintError(const std::string &message)
 {
-    std::cout << "[Error] " << m_Line << ":" << message << std::endl;
+    std::cout << std::format("{}({}) error: {}", m_FileName, m_Line, message) << std::endl;
 }
 
 TScaner::State TScaner::SaveState()

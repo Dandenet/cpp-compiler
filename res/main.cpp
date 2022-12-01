@@ -1,35 +1,30 @@
-// single line comment
+int i = 0;
 
-/* Multy
- * line
- * comment
-*/
+class ClassIdent {
+    int a = 0;
 
-class MyClass {
-    int x = 12345;
-    double y = 0.1e+12;
+};
 
-    void Fun()
+
+class SomeClass
+{
+    void f() {}
+};
+
+class SomeClass2
+{
+    void fun()
     {
-       x = x + y;
+        while(1)
+        {
 
-       while (x >= y || y <= x && x > y && y < x)
-       {
-           x = x - y;
-           y = y / x;
-           y = y % x;
-           y = y == x;
-       }
+        }
     }
+
 };
 
 void main()
 {
-    MyClass a;
-
+    SomeClass2 a;
     a.fun();
 }
-
-/*
-* Cooment
-*/

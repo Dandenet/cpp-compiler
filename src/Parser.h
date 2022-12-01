@@ -2,28 +2,34 @@
 #define PARSER_H
 
 #include "Scaner.h"
+#include "Tree.h"
 
 
 class TParser 
 {
 public:
-	TParser(TScaner* scaner);
+    TParser(TScaner* scaner);
+
 
 	void Parse();
 
 private:
-	TScaner* m_Scaner;
+    TScaner* m_Scaner;
+    Tree     m_SemTree;
 
-	void AndExprDiagram();
-	void ExprDiagram();
-	void EqualExprDiagram();
-	void CmpExprDiagram();
-	void AddExprDiagram();
-	void MulExprDiagram();
-	void ElementoryExprDiagram();
-	void UnaryExpDiagram();
 
-	void DescriptionDiagram();
+    DataType AndExprDiagram();
+    DataType ExprDiagram();
+    DataType EqualExprDiagram();
+    DataType CmpExprDiagram();
+    DataType AddExprDiagram();
+    DataType MulExprDiagram();
+    DataType ElementoryExprDiagram();
+    DataType UnaryExpDiagram();
+    Tree*    NameDiagram();
+
+
+    void DescriptionDiagram();
 	void DataDiagram();
 	void ClassDiagram();
 	void FunctionDiagram();
@@ -34,7 +40,6 @@ private:
 	void CompoundOperatorDiagram();
 	void WhileOperatorDiagram();
 
-	void NameDiagram();
 };
 
 #endif // !PARSER_H
